@@ -10,7 +10,6 @@
     <div id="nav">
         <?php
         $cookieUser = isset($_COOKIE['CookieUser']) ? $_COOKIE['CookieUser'] : '';
-       
         if ($cookieUser == "") {
             echo '<a href="SignUp.php">Sign Up</a>';
             echo '<a href="SignIn.php">Sign In</a>';
@@ -28,27 +27,36 @@
                 <th>Topic</th>
                 <th>Author</th>
                 <th>Date</th>
+                <th>Likes</th>
+                <th>Action</th>
             </tr>
             <?php
             try {
-                $db = new PDO('sqlite:/home/mcswk/21288985/public_webprog/IFU/Lab04/phpliteadmin/Forum.db');
+                $db = new PDO('sqlite:phpliteadmin/Forum.db');
                 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                $stmt = $db->prepare('SELECT t.Topic, u.UserName, t.DateTime FROM Topic t JOIN User u ON t.UserID = u.UserID ORDER BY t.TopicID DESC');
+                $stmt = $db->prepare('
+                    SELECT t.TopicID, t.Topic, u.UserName, t.DateTime, 
+                           COALESCE(SUM(p.Likes), 0) AS Likes 
+                    FROM Topic t 
+                    JOIN User u ON t.UserID = u.UserID 
+                    LEFT JOIN Post p ON t.TopicID = p.TopicID 
+                    GROUP BY t.TopicID, t.Topic, u.UserName, t.DateTime 
+                    ORDER BY Likes DESC
+                ');
                 $stmt->execute();
-                
-                // Fetch all rows
+
                 $topics = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 if (empty($topics)) {
-                    echo "<tr><td colspan='3'>No topics available.</td></tr>";
+                    echo "<tr><td colspan='5'>No topics available.</td></tr>";
                 } else {
                     foreach ($topics as $row) {
-                        echo "<tr><td><a href='Forum.php?topic=" . urlencode($row['Topic']) . "'>" . htmlspecialchars($row['Topic']) . "</a></td><td>" . htmlspecialchars($row['UserName']) . "</td><td>" . htmlspecialchars($row['DateTime']) . "</td></tr>";
+                        echo "<tr><td><a href='Forum.php?topic=" . urlencode($row['Topic']) . "'>" . htmlspecialchars($row['Topic']) . "</a></td><td>" . htmlspecialchars($row['UserName']) . "</td><td>" . htmlspecialchars($row['DateTime']) . "</td><td>" . htmlspecialchars($row['Likes']) . "</td><td><a href='like.php?topicID=" . $row['TopicID'] . "'>Like</a></td></tr>";
                     }
                 }
             } catch (PDOException $e) {
-                echo "<tr><td colspan='3'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                echo "<tr><td colspan='5'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
             }
             ?>
         </table>
